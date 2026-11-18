@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>İ'râb Motoru</title>
+<meta name="description" content="Arapça kelime veya cümleyi i'râb, morfoloji, semantik ve belâgat yönünden çözümleyen araç.">
+<meta name="theme-color" content="#1f5f5b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f5f5b'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23f5ead7' font-family='serif'%3Eإ%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600&family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f1e7;--paper:#fffdf8;--ink:#2a2622;--muted:#6f675d;--line:#e3d9c7;
+  --accent:#1f5f5b;--accent-soft:#e2efed;--gold:#a8742a;--gold-soft:#f5ead7;
+  --ok:#2f7a45;--ok-soft:#e3f2e7;--bad:#a63d32;--bad-soft:#f8e4e1;
+  --p0:#1f3a6e;--p1:#a5612a;--p2:#1f6b4a;--p3:#8a6d12;--p4:#b24a32;--p5:#4a3f8f;
+  --radius:14px;--shadow:0 1px 2px rgba(60,40,10,.06),0 4px 14px rgba(60,40,10,.05);
+  --ar:"Noto Naskh Arabic","Amiri",serif;
+  --ui:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#181614;--paper:#221f1c;--ink:#ece6dc;--muted:#a59c8f;--line:#38322c;
+  --accent:#6cbab3;--accent-soft:#1f3533;--gold:#d6a65a;--gold-soft:#352a1b;
+  --ok:#73c08a;--ok-soft:#1d3224;--bad:#e2847a;--bad-soft:#3a2220;--shadow:none;
+  --p0:#8fb0ee;--p1:#e0a46b;--p2:#6fcf9f;--p3:#d9bd5a;--p4:#ee8f77;--p5:#a99be8;}}
+*{box-sizing:border-box}
+html,body{margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 var(--ui)}
+.wrap{max-width:920px;margin:0 auto;padding:22px 14px 72px;display:flex;flex-direction:column;gap:14px}
+header h1{font-family:var(--serif);font-size:1.65rem;margin:0;line-height:1.25;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+header h1 .ar{font-family:var(--ar);font-size:1.25em;color:var(--gold);line-height:1.6}
+.sub{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+label{font-weight:600;font-size:.9rem}
+textarea{width:100%;margin-top:8px;min-height:92px;resize:vertical;direction:rtl;text-align:right;font-family:var(--ar);font-size:1.75rem;line-height:1.8;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+input[type=password],input[type=text],select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)}
+textarea:focus,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+button{font:600 .92rem var(--ui);border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:9px 16px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){button.primary{color:#10201f}}
+button:disabled{opacity:.55;cursor:default}
+.chip{font-family:var(--ar);font-size:1.2rem;padding:2px 12px;direction:rtl;border-radius:999px;font-weight:400}
+.status{font-size:.9rem;color:var(--muted);min-height:20px;margin-top:8px}
+.status.err{color:var(--bad)}
+.meta{color:var(--muted);font-size:.9rem}
+details.key{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+details.key summary{cursor:pointer;font-weight:600;font-size:.9rem;color:var(--muted)}
+details.key p{margin:8px 0;font-size:.88rem;color:var(--muted)}
+details.key input{flex:1 1 240px;min-width:0}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:transparent;color:var(--muted);border-radius:999px;padding:8px 14px;font-size:.93rem}
+.tabs button[aria-selected="true"]{background:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.tabs button[aria-selected="true"]{color:#10201f}}
+.sumline{display:flex;flex-direction:column;gap:4px}
+.sumline .ar{font-family:var(--ar);font-size:1.9rem;direction:rtl;text-align:right;line-height:1.8}
+.warn{background:var(--gold-soft);border:1px solid var(--line);border-inline-start:3px solid var(--gold);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:.92rem}
+.warn ul{margin:4px 0 0;padding-left:18px}
+.word{display:flex;flex-direction:column;gap:10px}
+.word h3{margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.word h3 .ar{font-family:var(--ar);font-size:1.9rem;direction:rtl;font-weight:700;line-height:1.7}
+.parts{display:flex;flex-direction:row-reverse;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.part{border:1px solid var(--line);border-radius:10px;padding:6px 10px;min-width:84px;text-align:center;border-top:4px solid var(--c);background:var(--bg)}
+.part .m{font-family:var(--ar);font-size:1.75rem;line-height:1.5;color:var(--c)}
+.part .e{font-family:var(--ar);font-size:1rem;direction:rtl}
+.part .t{font-size:.78rem;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:.93rem}
+th,td{text-align:left;vertical-align:top;padding:8px 6px;border-top:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);width:34%}
+td.ar,.ar-inline{font-family:var(--ar);font-size:1.2rem;direction:rtl;text-align:right;line-height:1.8}
+.irab-list{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
+.irab-list li{font-family:var(--ar);font-size:1.25rem;direction:rtl;text-align:right;line-height:1.9;padding:6px 10px;border-bottom:1px solid var(--line)}
+.irab-list li:last-child{border-bottom:0}
+.pill{display:inline-block;font-size:.78rem;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.pill.kesin{background:var(--ok-soft);color:var(--ok)}
+.pill.tartismali{background:var(--gold-soft);color:var(--gold)}
+.pill.emin_degilim{background:var(--bad-soft);color:var(--bad)}
+.item{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:4px}
+.item:first-of-type{border-top:0}
+h2{font-family:var(--serif);font-size:1.15rem;margin:0 0 6px}
+.empty{color:var(--muted);font-size:.92rem}
+footer{color:var(--muted);font-size:.82rem;text-align:center;margin-top:8px}
+@media (max-width:480px){header h1{font-size:1.4rem}th{width:38%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>İ'râb Motoru <span class="ar" lang="ar" dir="rtl">مُحَرِّكُ الإِعْرَاب</span></h1>
+    <p class="sub">Arapça kelime veya cümle yaz; morfoloji, nahiv, semantik ve belâgat çözümlemesi çıksın.</p>
+  </header>
+
+  <section class="card" aria-label="Giriş">
+    <label for="inp">Arapça metin</label>
+    <textarea id="inp" lang="ar" dir="rtl" spellcheck="false">فَأَسْقَيْنَاكُمُوهُ</textarea>
+    <div class="row">
+      <button class="primary" id="go" type="button">Analiz et</button>
+      <button id="stop" type="button" hidden>Durdur</button>
+      <label for="speed" class="meta" style="font-weight:400">Hız:</label>
+      <select id="speed">
+        <option value="quick" selected>Hızlı</option>
+        <option value="default">Dengeli</option>
+        <option value="complex">Ayrıntılı (yavaş)</option>
+      </select>
+    </div>
+    <div class="row">
+      <span class="meta">Örnekler:</span>
+      <button class="chip" type="button" data-ex="فَأَسْقَيْنَاكُمُوهُ">فَأَسْقَيْنَاكُمُوهُ</button>
+      <button class="chip" type="button" data-ex="الْعِلْمُ نُورٌ وَالْجَهْلُ ظَلَامٌ">الْعِلْمُ نُورٌ وَالْجَهْلُ ظَلَامٌ</button>
+      <button class="chip" type="button" data-ex="كَأَنَّ وَجْهَكَ الْبَدْرُ">كَأَنَّ وَجْهَكَ الْبَدْرُ</button>
+    </div>
+    <details class="key" id="keybox">
+      <summary>Analiz motoru ayarı (API anahtarı)</summary>
+      <p>Bu sayfa GitHub'da herkese açık yayımlandığı için analiz, senin Anthropic API anahtarınla çalışır. Anahtar yalnızca bu tarayıcıda (localStorage) saklanır, sayfa sahibine veya bir sunucuya gönderilmez; doğrudan Anthropic'e gider. Anahtarsız hâlde yalnızca örnek sonuç görünür.</p>
+      <div class="row" style="margin-top:0">
+        <input type="password" id="apikey" placeholder="sk-ant-..." autocomplete="off" aria-label="Anthropic API anahtarı">
+        <button type="button" id="savekey">Kaydet</button>
+        <button type="button" id="clearkey">Sil</button>
+      </div>
+    </details>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section id="out" aria-label="Sonuç"></section>
+  <footer>Çıktı bir ön çözümlemedir; ödevde kullanmadan önce hocanın kabul ettiği kaynakla karşılaştır.</footer>
+</div>
+
+<script>
+/* ---------- Örnek sonuç ---------- */
+var DEMO = {
+  demo: true,
+  girdi: "فَأَسْقَيْنَاكُمُوهُ",
+  harekeEklendi: false,
+  ozet_tr: "Tek kelimelik fiil cümlesi: atıf harfi + mazi fiil + fâil + iki mef'ûl + işbâ' harfi.",
+  ceviri_tr: "Onu size içirdik (suladık).",
+  cumle_turu: "Fiil cümlesi (جملة فعلية), önceki cümleye bağlı",
+  kelimeler: [{
+    yuzey: "فَأَسْقَيْنَاكُمُوهُ",
+    parcalar: [
+      {metin:"فَ", etiket_ar:"حرف عطف", etiket_tr:"Atıf harfi", tur:"harf", irab_ar:"الفاء: حرف عطف مبني على الفتح لا محل له من الإعراب"},
+      {metin:"أَسْقَيْ", etiket_ar:"فعل ماض", etiket_tr:"Mazi fiil", tur:"fiil", irab_ar:"أسقى: فعل ماض مبني على السكون لاتصاله بضمير الرفع المتحرك (نا)"},
+      {metin:"نَا", etiket_ar:"فاعل", etiket_tr:"Fâil", tur:"zamir", irab_ar:"نا: ضمير متصل مبني على السكون في محل رفع فاعل"},
+      {metin:"كُمُ", etiket_ar:"مفعول به أول", etiket_tr:"Birinci mef'ûlün bih", tur:"zamir", irab_ar:"كم: ضمير متصل مبني على الضم في محل نصب مفعول به أول"},
+      {metin:"و", etiket_ar:"حرف إشباع", etiket_tr:"İşbâ' harfi", tur:"ek", irab_ar:"الواو: حرف إشباع لا محل له من الإعراب"},
+      {metin:"هُ", etiket_ar:"مفعول به ثان", etiket_tr:"İkinci mef'ûlün bih", tur:"zamir", irab_ar:"الهاء: ضمير متصل مبني على الضم في محل نصب مفعول به ثان"}
+    ],
+    kok: "س ق ي", vezin: "أَفْعَلَ", bab: "İf'âl", tasrif: "أَسْقَى – يُسْقِي – إِسْقَاءً",
+    kelime_turu: "Fiil + bitişik zamirler (tek kelime yazılır)",
+    anlam_kok_tr: "س-ق-ي: su vermek, sulamak.",
+    anlam_baglam_tr: "İf'âl babı fiile bir mef'ûl daha kazandırır: 'içirdik, sulattık'. Burada iki mef'ûl alır (size, onu).",
+    anlam_alani: "Su, sulama, yağmur",
+    es_anlamlilar: ["سَقَى"], zit: [], ilgili: ["سِقَايَة","سَاقٍ","مَسْقًى"],
+    nahiv_tr: "Fiil iki mef'ûl alır. Bitişik zamirler sırayla gelir: önce muhatap zamiri (كم), sonra gâib zamiri (ه).",
+    guven: "kesin",
+    not_tr: "كُمُو yazımındaki و, mîmü'l-cem'in dammeyle işbâ'ıdır. Kıraat ve rasm bilgisi bu motorla doğrulanmadı."
+  }],
+  belagat: {
+    meani: [
+      {baslik:"İcâz (yoğun anlatım)", delil:"فَأَسْقَيْنَاكُمُوهُ", aciklama_tr:"Fiil, fâil ve iki mef'ûl tek kelimede toplanmıştır; kısa ve yoğun anlatım örneği sayılabilir.", guven:"tartismali"},
+      {baslik:"'نا' ile azamet ihtimali", delil:"نَا", aciklama_tr:"Tek bir fâil için çoğul zamir kullanılıyorsa tazim anlamı taşıyabilir. Tek kelimeden bağlam çıkmaz, cümlenin bütünü gerekir.", guven:"emin_degilim"}
+    ],
+    beyan: [], bedi: [],
+    ozet_tr: "Tek kelime olduğu için beyân ve bedî' unsuru yok; belâgat yönü icâz ile sınırlı."
+  },
+  uyarilar: ["Bu bir örnek sonuçtur. Kendi metnini yazıp 'Analiz et' düğmesine bas.", "Motorun çıktısı bir ön çözümlemedir; hocanın kabul ettiği kaynakla karşılaştırmadan ödevde kullanma."]
+};
+
+/* ---------- Motor istemi ---------- */
+var SCHEMA = '{"harekeEklendi":false,"ozet_tr":"","ceviri_tr":"","cumle_turu":"",' +
+'"kelimeler":[{"yuzey":"kelime, harekeli","parcalar":[{"metin":"","etiket_ar":"kısa i\'rab etiketi, ör. فعل ماض","etiket_tr":"kısa Türkçe karşılığı","tur":"harf|fiil|isim|zamir|ek","irab_ar":"tam i\'rab cümlesi Arapça, mahalli dahil"}],' +
+'"kok":"س ق ي","vezin":"","bab":"","tasrif":"","kelime_turu":"","anlam_kok_tr":"","anlam_baglam_tr":"","anlam_alani":"","es_anlamlilar":[],"zit":[],"ilgili":[],"nahiv_tr":"","guven":"kesin|tartismali|emin_degilim","not_tr":""}],' +
+'"belagat":{"meani":[{"baslik":"","delil":"metinden alıntı","aciklama_tr":"","guven":"kesin|tartismali|emin_degilim"}],"beyan":[],"bedi":[],"ozet_tr":""},"uyarilar":[]}';
+
+var PROMPT =
+'Sen klasik Arap dili (sarf, nahiv, belâgat) alanında titiz bir analiz motorusun. Aşağıdaki Arapça metni çözümle ve YALNIZCA geçerli JSON döndür (kod bloğu, giriş veya açıklama yazma).\n' +
+'KURALLAR:\n' +
+'1. Metinde hareke yoksa en olası harekeyi ekle, harekeEklendi:true yaz, ihtimalleri uyarilar içinde belirt.\n' +
+'2. Her kelimenin "parcalar" dizisi, birleştirildiğinde "yuzey" ile harf ve hareke olarak birebir aynı olmalı (فَ + أَسْقَيْ + نَا ...). Önek, kök kısmı ve bitişik zamirleri ayrı parça yap.\n' +
+'3. Kaynak, kitap adı, sûre-âyet numarası, hadis kaynağı veya şiir nisbeti UYDURMA. Metnin bir âyet, hadis veya şiir olabileceğini düşünsen bile yalnızca uyarilar içinde "olabilir, doğrulanmadı" de.\n' +
+'4. Emin olmadığın veya âlimler arasında ihtilaf bulunan yerde guven alanına "tartismali" ya da "emin_degilim" yaz. Sadece gerçekten kesin olanlara "kesin" ver.\n' +
+'5. Belâgatta zorlama yapma: her tespit için delil alanına metinden kelimeyi yaz. Belâgat unsuru yoksa ilgili diziyi boş bırak ve ozet_tr içinde bunu söyle. meani: haber/inşâ, tekit, takdîm-te\'hîr, hazf, kasr, fasl-vasl, icâz-ıtnâb vb. beyan: teşbih, istiâre, mecâz, kinâye. bedî\': cinâs, tıbâk, mukâbele, seci\', iktibâs vb.\n' +
+'6. Açıklamalar Türkçe, terimler Arapça yazılışı ile birlikte. ÇOK KISA yaz: her açıklama en çok 1 cümle; es_anlamlilar, zit ve ilgili en çok 3 öğe; meani, beyan ve bedi en çok 3 öğe; boş alanı "" bırak. Gereksiz alan doldurma. Hızlı yanıt ver.\n' +
+'7. En çok 12 kelime işle; fazlası varsa uyarilar içinde belirt.\n' +
+'8. Cümle düzeyindeki nahiv ilişkilerini (mübtedâ-haber, mudâf-mudâfün ileyh, sıfat-mevsûf gibi) ilgili kelimenin irab_ar ve nahiv_tr alanlarına yaz.\n\n' +
+'ÇIKTI ŞEMASI (bu anahtarlarla):\n' + SCHEMA + '\n\nMETİN:\n';
+
+/* ---------- Yardımcılar ---------- */
+var $ = function(id){return document.getElementById(id)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function arr(x){return Array.isArray(x)?x:[]}
+function strip(s){return String(s||'').replace(/\s+/g,'')}
+function pill(g){
+  var k = (g==='kesin'||g==='tartismali'||g==='emin_degilim')?g:'emin_degilim';
+  var t = {kesin:'Kesin',tartismali:'Tartışmalı',emin_degilim:'Emin değilim'}[k];
+  return '<span class="pill '+k+'">'+t+'</span>';
+}
+function row(k,v,ar){ if(!v||(Array.isArray(v)&&!v.length)) return ''; var val=Array.isArray(v)?v.join('، '):v; return '<tr><th>'+esc(k)+'</th><td'+(ar?' class="ar"':'')+'>'+esc(val)+'</td></tr>'; }
+function store(k,v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(_){ return null; } }
+
+/* ---------- Durum ---------- */
+var state = {data: DEMO, tab: 'irab'};
+var TABS = [['irab',"İ'râb"],['sarf','Morfoloji'],['anlam','Semantik'],['belagat','Belâgat']];
+
+/* ---------- Sekmeler ---------- */
+function viewIrab(d){
+  var h = '';
+  arr(d.kelimeler).forEach(function(w){
+    var parts = arr(w.parcalar);
+    h += '<div class="card word"><h3><span class="ar">'+esc(w.yuzey)+'</span><span>'+pill(w.guven)+'</span></h3>';
+    h += '<div class="parts">'+parts.map(function(p,i){
+      return '<div class="part" style="--c:var(--p'+(i%6)+')"><div class="m">'+esc(p.metin)+'</div><div class="e">'+esc(p.etiket_ar)+'</div><div class="t">'+esc(p.etiket_tr)+'</div></div>';
+    }).join('')+'</div>';
+    h += '<ul class="irab-list">'+parts.map(function(p){return '<li>'+esc(p.irab_ar)+'</li>'}).join('')+'</ul>';
+    if(w.nahiv_tr) h += '<div class="meta">'+esc(w.nahiv_tr)+'</div>';
+    if(w.not_tr) h += '<div class="meta">'+esc(w.not_tr)+'</div>';
+    h += '</div>';
+  });
+  return h || '<div class="card empty">Kelime bulunamadı.</div>';
+}
+function viewSarf(d){
+  return arr(d.kelimeler).map(function(w){
+    return '<div class="card word"><h3><span class="ar">'+esc(w.yuzey)+'</span><span>'+pill(w.guven)+'</span></h3><table>'+
+      row('Kök',w.kok,true)+row('Vezin',w.vezin,true)+row('Bâb',w.bab)+row('Tasrîf',w.tasrif,true)+row('Kelime türü',w.kelime_turu)+
+      '</table><table>'+arr(w.parcalar).map(function(p){
+        return '<tr><th class="ar-inline">'+esc(p.metin)+'</th><td>'+esc(p.tur)+' · '+esc(p.etiket_tr)+'</td></tr>';
+      }).join('')+'</table></div>';
+  }).join('') || '<div class="card empty">Kelime bulunamadı.</div>';
+}
+function viewAnlam(d){
+  return arr(d.kelimeler).map(function(w){
+    return '<div class="card word"><h3><span class="ar">'+esc(w.yuzey)+'</span><span>'+pill(w.guven)+'</span></h3><table>'+
+      row('Kök anlamı',w.anlam_kok_tr)+row('Bağlamdaki anlam',w.anlam_baglam_tr)+row('Anlam alanı',w.anlam_alani)+
+      row('Eş anlamlılar',w.es_anlamlilar,true)+row('Zıt anlamlılar',w.zit,true)+row('İlgili kelimeler',w.ilgili,true)+
+      '</table></div>';
+  }).join('') || '<div class="card empty">Kelime bulunamadı.</div>';
+}
+function belagatBlock(title, items){
+  items = arr(items);
+  var h = '<div class="card"><h2>'+esc(title)+'</h2>';
+  if(!items.length) return h+'<div class="empty">Bu metinde tespit edilmedi.</div></div>';
+  h += items.map(function(x){
+    return '<div class="item"><div><b>'+esc(x.baslik)+'</b> '+pill(x.guven)+'</div>'+
+      (x.delil?'<div class="ar-inline">'+esc(x.delil)+'</div>':'')+
+      '<div>'+esc(x.aciklama_tr)+'</div></div>';
+  }).join('');
+  return h+'</div>';
+}
+function viewBelagat(d){
+  var b = d.belagat || {};
+  return (b.ozet_tr?'<div class="card">'+esc(b.ozet_tr)+'</div>':'')+
+    belagatBlock("Meânî",b.meani)+belagatBlock('Beyân',b.beyan)+belagatBlock("Bedî'",b.bedi);
+}
+
+function render(){
+  var d = state.data, h = '';
+  if(arr(d.uyarilar).length) h += '<div class="warn"><b>Uyarı</b><ul>'+d.uyarilar.map(function(u){return '<li>'+esc(u)+'</li>'}).join('')+'</ul></div>';
+  h += '<div class="card sumline"><div class="ar" lang="ar" dir="rtl">'+esc(d.girdi)+'</div>'+
+       (d.ceviri_tr?'<div><b>'+esc(d.ceviri_tr)+'</b></div>':'')+
+       (d.cumle_turu?'<div class="meta">'+esc(d.cumle_turu)+'</div>':'')+
+       (d.ozet_tr?'<div class="meta">'+esc(d.ozet_tr)+'</div>':'')+
+       (d.demo?'<div class="meta">Örnek sonuç gösteriliyor.</div>':'')+
+       '<div class="row"><button type="button" id="copy">Metin olarak kopyala</button><span class="meta" id="copied"></span></div></div>';
+  h += '<div class="tabs" role="tablist" aria-label="Çözümleme katmanları">'+TABS.map(function(t){
+    return '<button type="button" role="tab" data-tab="'+t[0]+'" aria-selected="'+(state.tab===t[0])+'">'+t[1]+'</button>';
+  }).join('')+'</div>';
+  var body = {irab:viewIrab,sarf:viewSarf,anlam:viewAnlam,belagat:viewBelagat}[state.tab](d);
+  h += '<div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">'+body+'</div>';
+  $('out').innerHTML = h;
+}
+
+/* ---------- Kopyalama ---------- */
+function toText(d){
+  var L = [d.girdi, d.ceviri_tr||'', d.cumle_turu||'', ''];
+  arr(d.kelimeler).forEach(function(w){
+    L.push('== '+w.yuzey+' ('+(w.guven||'')+')');
+    L.push("İ'râb:"); arr(w.parcalar).forEach(function(p){L.push('  '+p.irab_ar)});
+    L.push('Kök: '+(w.kok||'')+' | Vezin: '+(w.vezin||'')+' | Bâb: '+(w.bab||'')+' | Tasrîf: '+(w.tasrif||''));
+    L.push('Anlam: '+(w.anlam_kok_tr||'')+' '+(w.anlam_baglam_tr||''));
+    if(w.nahiv_tr) L.push('Nahiv: '+w.nahiv_tr);
+    L.push('');
+  });
+  var b = d.belagat||{};
+  [['Meânî',b.meani],['Beyân',b.beyan],["Bedî'",b.bedi]].forEach(function(s){
+    if(arr(s[1]).length){L.push(s[0]+':'); s[1].forEach(function(x){L.push('  - '+x.baslik+' ['+x.guven+']: '+(x.delil||'')+' | '+x.aciklama_tr)});}
+  });
+  if(b.ozet_tr) L.push(b.ozet_tr);
+  return L.join('\n');
+}
+
+/* ---------- Motor ---------- */
+var MODELS = {quick:'claude-haiku-5-5', 'default':'claude-sonnet-5-5', complex:'claude-opus-5-5'};
+var samplePromise = (window.claude && window.claude.use) ? window.claude.use('sample') : Promise.resolve(null);
+var ctl = null;
+function setStatus(t, err){ var s=$('status'); s.textContent=t||''; s.className='status'+(err?' err':''); }
+function busy(b){ $('go').disabled=b; $('stop').hidden=!b; }
+
+function parseJson(t){
+  var a=t.indexOf('{'), b=t.lastIndexOf('}');
+  if(a<0||b<a) throw new Error('Yanıt JSON değil.');
+  return JSON.parse(t.slice(a,b+1));
+}
+function normalize(d, input){
+  d.girdi = input; d.uyarilar = arr(d.uyarilar).slice();
+  d.kelimeler = arr(d.kelimeler).map(function(w){
+    w.parcalar = arr(w.parcalar);
+    if(!w.parcalar.length) w.parcalar = [{metin:w.yuzey||'',etiket_ar:'',etiket_tr:'',tur:'',irab_ar:''}];
+    var joined = w.parcalar.map(function(p){return p.metin||''}).join('');
+    if(strip(joined)!==strip(w.yuzey)) d.uyarilar.push('"'+w.yuzey+'" kelimesinin parçalara bölünmesi yüzey yazılışla birebir uyuşmuyor; parçaları kontrol et.');
+    return w;
+  });
+  return d;
+}
+
+/* Anthropic API'yi doğrudan tarayıcıdan çağırır (kullanıcının kendi anahtarıyla) */
+async function callApi(key, prompt, tier, signal){
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', signal:signal,
+    headers:{
+      'content-type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({model:MODELS[tier]||MODELS['default'], max_tokens:8000, messages:[{role:'user',content:prompt}]})
+  });
+  var j = await res.json().catch(function(){return {}});
+  if(!res.ok){
+    var e = new Error((j.error && j.error.message) || ('API hatası ('+res.status+')'));
+    e.status = res.status; throw e;
+  }
+  return {
+    text: arr(j.content).map(function(c){return c.text||''}).join(''),
+    truncated: j.stop_reason==='max_tokens'
+  };
+}
+
+async function analyze(){
+  var input = $('inp').value.trim();
+  if(!input) return setStatus('Bir Arapça metin yaz.', true);
+  if(!/[\u0600-\u06FF]/.test(input)) return setStatus('Arapça harflerle yazmalısın.', true);
+  var key = store('irab_api_key');
+  var sample = key ? null : await samplePromise;
+  if(!key && !sample){
+    $('keybox').open = true;
+    return setStatus('Analiz için API anahtarı gerekli. Aşağıdaki ayardan kendi anahtarını ekle.', true);
+  }
+  ctl = new AbortController(); busy(true);
+  setStatus('Analiz ediliyor…');
+  try{
+    var t0 = Date.now(), r;
+    if(key){
+      r = await callApi(key, PROMPT+input, $('speed').value, ctl.signal);
+    }else{
+      r = await sample(PROMPT+input, {
+        modelTier: $('speed').value, signal: ctl.signal, cache:false,
+        onText: function(o){
+          var n = (o && o.text) ? o.text.length : 0;
+          if(n) setStatus('Analiz yazılıyor… '+n+' karakter, '+Math.round((Date.now()-t0)/1000)+' sn');
+        }
+      });
+    }
+    if(r.truncated) throw new Error('Yanıt yarıda kesildi. Metni kısaltıp tekrar dene.');
+    state.data = normalize(parseJson(r.text), input);
+    state.tab = 'irab'; render(); setStatus('Hazır.');
+  }catch(e){
+    if(e && e.name==='AbortError') setStatus('Durduruldu.');
+    else if(e && e.code==='not_granted') setStatus('Motor izni verilmedi.', true);
+    else if(e && (e.code==='rate_limited' || e.status===429)) setStatus('Çok sık istek gönderildi; biraz bekleyip tekrar dene.', true);
+    else if(e && e.status===401) setStatus('API anahtarı geçersiz. Ayardan kontrol et.', true);
+    else if(e instanceof SyntaxError) setStatus('Yanıt okunamadı. Tekrar dene.', true);
+    else setStatus((e && e.message) ? e.message : 'Analiz başarısız oldu.', true);
+  }finally{ busy(false); }
+}
+
+/* ---------- Olaylar ---------- */
+$('go').addEventListener('click', analyze);
+$('stop').addEventListener('click', function(){ if(ctl) ctl.abort(); });
+document.querySelectorAll('[data-ex]').forEach(function(b){
+  b.addEventListener('click', function(){ $('inp').value = b.getAttribute('data-ex'); $('inp').focus(); });
+});
+$('savekey').addEventListener('click', function(){
+  var v = $('apikey').value.trim();
+  if(!v) return setStatus('Anahtar boş.', true);
+  store('irab_api_key', v); $('apikey').value=''; setStatus('Anahtar bu tarayıcıya kaydedildi.');
+});
+$('clearkey').addEventListener('click', function(){
+  store('irab_api_key', null); $('apikey').value=''; setStatus('Anahtar silindi.');
+});
+$('out').addEventListener('click', function(e){
+  var t = e.target.closest('[data-tab]');
+  if(t){ state.tab = t.getAttribute('data-tab'); render(); return; }
+  if(e.target.id==='copy'){
+    var txt = toText(state.data), el = $('copied');
+    try{
+      navigator.clipboard.writeText(txt).then(function(){ el.textContent='Kopyalandı.'; }, function(){ el.textContent='Kopyalanamadı.'; });
+    }catch(_){ el.textContent='Kopyalanamadı.'; }
+  }
+});
+render();
+</script>
+</body>
+</html>
