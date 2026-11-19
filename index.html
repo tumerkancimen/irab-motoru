@@ -343,7 +343,7 @@ function applyProvider(){
 
 /* Ortak vekil (Cloudflare Worker). Kullanıcı kendi anahtarını girmediyse bu kullanılır.
    Worker'ı kurduktan sonra adresini buraya yaz, örn. 'https://irab-motoru.KULLANICI.workers.dev' */
-var PROXY_URL = '';
+var PROXY_URL = 'https://irab-motoru.tcimen-jo.workers.dev';
 
 /* Gemini'yi çağırır: anahtar verilirse doğrudan Google'a, verilmezse vekile gider */
 async function callGemini(key, prompt, tier, signal){
