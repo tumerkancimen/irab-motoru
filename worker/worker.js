@@ -4,8 +4,8 @@
 
 const ALLOWED_ORIGIN = 'https://tumerkancimen.github.io';
 const MODELS = {
-  quick: 'gemini-2.5-flash-lite',
-  default: 'gemini-2.5-flash',
+  quick: 'gemini-3.5-flash-lite',
+  default: 'gemini-3.5-flash',
   complex: 'gemini-3.1-pro-preview'
 };
 const MAX_PROMPT_CHARS = 8000;
@@ -48,7 +48,7 @@ export default {
     const model = MODELS[body.tier] || MODELS.default;
 
     const gen = { maxOutputTokens: 8192, responseMimeType: 'application/json' };
-    if (!model.includes('pro')) gen.thinkingConfig = { thinkingBudget: 0 };
+    if (model === 'gemini-3.5-flash') gen.thinkingConfig = { thinkingLevel: 'minimal' };
 
     const upstream = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(env.GEMINI_API_KEY),

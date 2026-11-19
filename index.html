@@ -322,7 +322,7 @@ function normalize(d, input){
 }
 
 /* Sağlayıcı seçimi: Gemini (ücretsiz katman) varsayılan, Anthropic isteğe bağlı */
-var GEMINI_MODELS = {quick:'gemini-2.5-flash-lite', 'default':'gemini-2.5-flash', complex:'gemini-3.1-pro-preview'};
+var GEMINI_MODELS = {quick:'gemini-3.5-flash-lite', 'default':'gemini-3.5-flash', complex:'gemini-3.1-pro-preview'};
 var PROV = {
   gemini: {
     keyName: 'irab_api_key_gemini', ph: 'AIza...',
@@ -351,7 +351,7 @@ async function callGemini(key, prompt, tier, signal){
   if(key){
     var model = GEMINI_MODELS[tier] || GEMINI_MODELS['default'];
     var gen = {maxOutputTokens:8192, responseMimeType:'application/json'};
-    if(model.indexOf('pro')<0) gen.thinkingConfig = {thinkingBudget:0}; /* hız için düşünme kapalı */
+    if(model==='gemini-3.5-flash') gen.thinkingConfig = {thinkingLevel:'minimal'}; /* hız için düşünme en düşük */
     res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key), {
       method:'POST', signal:signal,
       headers:{'content-type':'application/json'},
