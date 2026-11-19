@@ -6,7 +6,7 @@ const ALLOWED_ORIGIN = 'https://tumerkancimen.github.io';
 const MODELS = {
   quick: 'gemini-2.5-flash-lite',
   default: 'gemini-2.5-flash',
-  complex: 'gemini-2.5-pro'
+  complex: 'gemini-3.1-pro-preview'
 };
 const MAX_PROMPT_CHARS = 8000;
 
