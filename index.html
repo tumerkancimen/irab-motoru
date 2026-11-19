@@ -116,9 +116,14 @@ footer{color:var(--muted);font-size:.82rem;text-align:center;margin-top:8px}
     </div>
     <details class="key" id="keybox">
       <summary>Analiz motoru ayarı (API anahtarı)</summary>
-      <p>Bu sayfa GitHub'da herkese açık yayımlandığı için analiz, senin Anthropic API anahtarınla çalışır. Anahtar yalnızca bu tarayıcıda (localStorage) saklanır, sayfa sahibine veya bir sunucuya gönderilmez; doğrudan Anthropic'e gider. Anahtarsız hâlde yalnızca örnek sonuç görünür.</p>
+      <p>Bu sayfa GitHub'da herkese açık yayımlandığı için analiz, senin kendi API anahtarınla çalışır. Anahtar yalnızca bu tarayıcıda (localStorage) saklanır, sayfa sahibine veya bir sunucuya gönderilmez; doğrudan seçtiğin sağlayıcıya gider. Anahtarsız hâlde yalnızca örnek sonuç görünür.</p>
+      <p id="provhelp"></p>
       <div class="row" style="margin-top:0">
-        <input type="password" id="apikey" placeholder="sk-ant-..." autocomplete="off" aria-label="Anthropic API anahtarı">
+        <select id="provider" aria-label="Sağlayıcı">
+          <option value="gemini">Google Gemini (ücretsiz)</option>
+          <option value="anthropic">Anthropic Claude (ücretli)</option>
+        </select>
+        <input type="password" id="apikey" placeholder="" autocomplete="off" aria-label="API anahtarı">
         <button type="button" id="savekey">Kaydet</button>
         <button type="button" id="clearkey">Sil</button>
       </div>
@@ -316,6 +321,47 @@ function normalize(d, input){
   return d;
 }
 
+/* Sağlayıcı seçimi: Gemini (ücretsiz katman) varsayılan, Anthropic isteğe bağlı */
+var GEMINI_MODELS = {quick:'gemini-2.5-flash-lite', 'default':'gemini-2.5-flash', complex:'gemini-2.5-pro'};
+var PROV = {
+  gemini: {
+    keyName: 'irab_api_key_gemini', ph: 'AIza...',
+    help: 'Ücretsiz anahtar: aistudio.google.com/apikey adresinden kredi kartı gerekmeden alınır. Ücretsiz katmanda dakika ve günlük istek sınırı vardır; ayrıca gönderdiğin metin Google tarafından ürün geliştirmede kullanılabilir.'
+  },
+  anthropic: {
+    keyName: 'irab_api_key', ph: 'sk-ant-...',
+    help: 'Anahtar console.anthropic.com adresinden alınır; kullanım ücretlidir ve Claude aboneliğinden ayrı faturalanır.'
+  }
+};
+function provider(){ var p = store('irab_provider'); return PROV[p] ? p : 'gemini'; }
+function applyProvider(){
+  var p = provider();
+  $('provider').value = p;
+  $('apikey').placeholder = PROV[p].ph;
+  $('provhelp').textContent = PROV[p].help;
+}
+
+/* Gemini API'yi doğrudan tarayıcıdan çağırır (kullanıcının kendi anahtarıyla) */
+async function callGemini(key, prompt, tier, signal){
+  var model = GEMINI_MODELS[tier] || GEMINI_MODELS['default'];
+  var gen = {maxOutputTokens:8192, responseMimeType:'application/json'};
+  if(model.indexOf('pro')<0) gen.thinkingConfig = {thinkingBudget:0}; /* hız için düşünme kapalı */
+  var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key), {
+    method:'POST', signal:signal,
+    headers:{'content-type':'application/json'},
+    body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:gen})
+  });
+  var j = await res.json().catch(function(){return {}});
+  if(!res.ok){
+    var e = new Error((j.error && j.error.message) || ('API hatası ('+res.status+')'));
+    e.status = res.status; throw e;
+  }
+  var c = arr(j.candidates)[0] || {};
+  var text = arr(c.content && c.content.parts).map(function(p){return p.text||''}).join('');
+  if(!text) throw new Error('Gemini boş yanıt döndürdü' + (c.finishReason ? ' ('+c.finishReason+')' : '') + '. Tekrar dene.');
+  return {text:text, truncated: c.finishReason==='MAX_TOKENS'};
+}
+
 /* Anthropic API'yi doğrudan tarayıcıdan çağırır (kullanıcının kendi anahtarıyla) */
 async function callApi(key, prompt, tier, signal){
   var res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -343,18 +389,19 @@ async function analyze(){
   var input = $('inp').value.trim();
   if(!input) return setStatus('Bir Arapça metin yaz.', true);
   if(!/[\u0600-\u06FF]/.test(input)) return setStatus('Arapça harflerle yazmalısın.', true);
-  var key = store('irab_api_key');
+  var prov = provider();
+  var key = store(PROV[prov].keyName);
   var sample = key ? null : await samplePromise;
   if(!key && !sample){
     $('keybox').open = true;
-    return setStatus('Analiz için API anahtarı gerekli. Aşağıdaki ayardan kendi anahtarını ekle.', true);
+    return setStatus('Analiz için API anahtarı gerekli. Aşağıdaki ayardan ücretsiz Gemini anahtarını ekle.', true);
   }
   ctl = new AbortController(); busy(true);
   setStatus('Analiz ediliyor…');
   try{
     var t0 = Date.now(), r;
     if(key){
-      r = await callApi(key, PROMPT+input, $('speed').value, ctl.signal);
+      r = await (prov==='gemini' ? callGemini : callApi)(key, PROMPT+input, $('speed').value, ctl.signal);
     }else{
       r = await sample(PROMPT+input, {
         modelTier: $('speed').value, signal: ctl.signal, cache:false,
@@ -371,7 +418,7 @@ async function analyze(){
     if(e && e.name==='AbortError') setStatus('Durduruldu.');
     else if(e && e.code==='not_granted') setStatus('Motor izni verilmedi.', true);
     else if(e && (e.code==='rate_limited' || e.status===429)) setStatus('Çok sık istek gönderildi; biraz bekleyip tekrar dene.', true);
-    else if(e && e.status===401) setStatus('API anahtarı geçersiz. Ayardan kontrol et.', true);
+    else if(e && (e.status===401 || e.status===403 || (e.status===400 && /api key/i.test(e.message||'')))) setStatus('API anahtarı geçersiz. Ayardan kontrol et.', true);
     else if(e instanceof SyntaxError) setStatus('Yanıt okunamadı. Tekrar dene.', true);
     else setStatus((e && e.message) ? e.message : 'Analiz başarısız oldu.', true);
   }finally{ busy(false); }
@@ -383,13 +430,14 @@ $('stop').addEventListener('click', function(){ if(ctl) ctl.abort(); });
 document.querySelectorAll('[data-ex]').forEach(function(b){
   b.addEventListener('click', function(){ $('inp').value = b.getAttribute('data-ex'); $('inp').focus(); });
 });
+$('provider').addEventListener('change', function(){ store('irab_provider', $('provider').value); applyProvider(); });
 $('savekey').addEventListener('click', function(){
   var v = $('apikey').value.trim();
   if(!v) return setStatus('Anahtar boş.', true);
-  store('irab_api_key', v); $('apikey').value=''; setStatus('Anahtar bu tarayıcıya kaydedildi.');
+  store(PROV[provider()].keyName, v); $('apikey').value=''; setStatus('Anahtar bu tarayıcıya kaydedildi.');
 });
 $('clearkey').addEventListener('click', function(){
-  store('irab_api_key', null); $('apikey').value=''; setStatus('Anahtar silindi.');
+  store(PROV[provider()].keyName, null); $('apikey').value=''; setStatus('Anahtar silindi.');
 });
 $('out').addEventListener('click', function(e){
   var t = e.target.closest('[data-tab]');
@@ -401,6 +449,7 @@ $('out').addEventListener('click', function(e){
     }catch(_){ el.textContent='Kopyalanamadı.'; }
   }
 });
+applyProvider();
 render();
 </script>
 </body>
